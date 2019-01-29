@@ -96,7 +96,8 @@ def train(generator, discriminator, loader, options):
             if step > 5:
                 alpha = 1
                 step = 5
-            dataset = sample_data(loader, 4 * 2 ** step)
+            data_loader = sample_data(loader, 4 * 2 ** step)
+            dataset = iter(data_loader)
 
         try:
             real_image, label = next(dataset)
@@ -178,8 +179,8 @@ def train(generator, discriminator, loader, options):
             torch.save(g_running, f'checkpoint/{str(i + 1).zfill(6)}.model')
 
         pbar.set_description(
-            (f'{i + 1}; G: {gen_loss_val:.5f}; D: {disc_loss_val:.5f};'
-             f' Grad: {grad_loss_val:.5f}; Alpha: {alpha:.3f}'))
+            (f'{i + 1}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
+             f' Grad: {grad_loss_val:.3f}; Alpha: {alpha:.3f}'))
 
 
 
