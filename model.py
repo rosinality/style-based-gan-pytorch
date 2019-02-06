@@ -248,7 +248,7 @@ class StyledGenerator(nn.Module):
 
         self.style = nn.Sequential(*layers)
 
-    def forward(self, input, noise=None, step=0, alpha=-1):
+    def forward(self, input, noise=None, step=0, alpha=-1, mean_style=None, style_weight=0):
         batch = input.shape[0]
 
         if noise is None:
@@ -260,7 +260,15 @@ class StyledGenerator(nn.Module):
 
         style = self.style(input)
 
+        if mean_style is not None:
+            style = mean_style + style_weight * (style - mean_style)
+
         return self.generator(style, noise, step, alpha)
+
+    def mean_style(self, input):
+        style = self.style(input).mean(0, keepdim=True)
+
+        return style
 
 
 class Discriminator(nn.Module):
