@@ -5,3 +5,7 @@ Implementation of A Style-Based Generator Architecture for Generative Adversaria
 Usage:
 
 > python train.py -d {celeba} PATH
+
+## Sample
+
+![Sample of the model trained on CelebA](doc/sample.png)
