@@ -2,6 +2,7 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 import argparse
+import random
 
 import torch
 from torch import nn, optim
@@ -117,8 +118,18 @@ def train(generator, discriminator, loader, options):
             - 0.001 * (real_predict ** 2).mean()
         real_predict.backward(mone)
 
+        if args.mixing and random.random() < 0.9:
+            gen_in11, gen_in12, gen_in21, gen_in22 = torch.randn(4, b_size, code_size, device='cuda').chunk(4, 0)
+            gen_in1 = [gen_in11.squeeze(0), gen_in12.squeeze(0)]
+            gen_in2 = [gen_in21.squeeze(0), gen_in22.squeeze(0)]
+
+        else:
+            gen_in1, gen_in2 = torch.randn(2, b_size, code_size, device='cuda').chunk(2, 0)
+            gen_in1 = gen_in1.squeeze(0)
+            gen_in2 = gen_in2.squeeze(0)
+
         fake_image = generator(
-            torch.randn(b_size, code_size).cuda(),
+            gen_in1,
             step=step, alpha=alpha)
         fake_predict = discriminator(
             fake_image, step=step, alpha=alpha)
@@ -147,7 +158,7 @@ def train(generator, discriminator, loader, options):
             requires_grad(discriminator, False)
 
             fake_image = generator(
-                torch.randn(batch_size, code_size).cuda(),
+                gen_in2,
                 step=step, alpha=alpha)
 
             predict = discriminator(fake_image, step=step, alpha=alpha)
@@ -157,30 +168,36 @@ def train(generator, discriminator, loader, options):
 
             loss.backward()
             g_optimizer.step()
-            accumulate(g_running, generator)
+            accumulate(g_running, generator.module)
 
             requires_grad(generator, False)
             requires_grad(discriminator, True)
 
         if (i + 1) % 100 == 0:
-            images = []
+            '''images = []
             for _ in range(5):
                 images.append(g_running(
                     torch.randn(5 * 10, code_size).cuda(),
-                    step=step, alpha=alpha).data.cpu())
+                    step=step, alpha=alpha).data.cpu())'''
+            images = g_running(torch.randn(5 * 10, code_size).cuda(),
+                                step=step, alpha=alpha).data.cpu()
+
             utils.save_image(
-                torch.cat(images, 0),
+                images,
                 f'sample/{str(i + 1).zfill(6)}.png',
-                nrow=5 * 10,
+                nrow=10,
                 normalize=True,
                 range=(-1, 1))
 
         if (i + 1) % 10000 == 0:
-            torch.save(g_running, f'checkpoint/{str(i + 1).zfill(6)}.model')
+            torch.save(g_running.state_dict(), f'checkpoint/{str(i + 1).zfill(6)}.model')
 
-        pbar.set_description(
-            (f'{i + 1}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
-             f' Grad: {grad_loss_val:.3f}; Alpha: {alpha:.3f}'))
+        state_msg = (f'{i + 1}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
+             f' Grad: {grad_loss_val:.3f}; Alpha: {alpha:.3f}')
+
+        pbar.set_description(state_msg)
+
+
 
 
 
@@ -194,6 +211,7 @@ if __name__ == '__main__':
     parser.add_argument('path', type=str, help='path of specified dataset')
     parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
     parser.add_argument('--init-size', default=8, type=int, help='initial image size')
+    parser.add_argument('--mixing', action='store_true', help='use mixing regularization')
     parser.add_argument('-d', '--data', default='celeba', type=str,
                         choices=['celeba', 'lsun'],
                         help=('Specify dataset. '
@@ -201,20 +219,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    generator = StyledGenerator(code_size).cuda()
-    discriminator = Discriminator().cuda()
+    generator = nn.DataParallel(StyledGenerator(code_size)).cuda()
+    discriminator = nn.DataParallel(Discriminator()).cuda()
     g_running = StyledGenerator(code_size).cuda()
     g_running.train(False)
 
     class_loss = nn.CrossEntropyLoss()
 
-    g_optimizer = optim.Adam(generator.generator.parameters(), lr=args.lr, betas=(0.0, 0.99))
-    g_optimizer.add_param_group({'params': generator.style.parameters(), 'lr': args.lr * 0.01})
+    g_optimizer = optim.Adam(generator.module.generator.parameters(), lr=args.lr, betas=(0.0, 0.99))
+    g_optimizer.add_param_group({'params': generator.module.style.parameters(), 'lr': args.lr * 0.01})
     d_optimizer = optim.Adam(
         discriminator.parameters(), lr=args.lr, betas=(0.0, 0.99))
 
 
-    accumulate(g_running, generator, 0)
+    accumulate(g_running, generator.module, 0)
 
 
     if args.data == 'celeba':
