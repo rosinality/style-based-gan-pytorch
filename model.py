@@ -230,7 +230,7 @@ class Generator(nn.Module):
 
         # self.blur = Blur()
 
-    def forward(self, style, noise, step=0, alpha=-1):
+    def forward(self, style, noise, step=0, alpha=-1, mixing_range=(-1, -1)):
         out = noise[0]
 
         if len(style) < 2:
@@ -242,10 +242,18 @@ class Generator(nn.Module):
         crossover = 0
 
         for i, (conv, to_rgb) in enumerate(zip(self.progression, self.to_rgb)):
-            if crossover < len(inject_index) and i > inject_index[crossover]:
-                crossover = min(crossover + 1, len(style))
+            if mixing_range == (-1, -1):
+                if crossover < len(inject_index) and i > inject_index[crossover]:
+                    crossover = min(crossover + 1, len(style))
 
-            style_step = style[crossover]
+                style_step = style[crossover]
+
+            else:
+                if mixing_range[0] <= i <= mixing_range[1]:
+                    style_step = style[1]
+
+                else:
+                    style_step = style[0]
 
             if i > 0 and step > 0:
                 upsample = F.interpolate(out, scale_factor=2, mode='bilinear', align_corners=False)
@@ -280,7 +288,7 @@ class StyledGenerator(nn.Module):
 
         self.style = nn.Sequential(*layers)
 
-    def forward(self, input, noise=None, step=0, alpha=-1, mean_style=None, style_weight=0):
+    def forward(self, input, noise=None, step=0, alpha=-1, mean_style=None, style_weight=0, mixing_range=(-1, -1)):
         styles = []
         if type(input) not in (list, tuple):
             input = [input]
@@ -298,9 +306,14 @@ class StyledGenerator(nn.Module):
                 noise.append(torch.randn(batch, 1, size, size, device=input[0].device))
 
         if mean_style is not None:
-            style = mean_style + style_weight * (style - mean_style)
+            styles_norm = []
 
-        return self.generator(styles, noise, step, alpha)
+            for style in styles:
+                styles_norm.append(mean_style + style_weight * (style - mean_style))
+
+            styles = styles_norm
+
+        return self.generator(styles, noise, step, alpha, mixing_range=mixing_range)
 
     def mean_style(self, input):
         style = self.style(input).mean(0, keepdim=True)
