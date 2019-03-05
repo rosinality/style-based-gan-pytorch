@@ -187,24 +187,24 @@ class StyledConvBlock(nn.Module):
         else:
             self.conv1 = EqualConv2d(in_channel, out_channel, kernel_size, padding=padding)
 
-        self.adain1 = AdaptiveInstanceNorm(out_channel, style_dim)
         self.noise1 = equal_lr(NoiseInjection(out_channel))
+        self.adain1 = AdaptiveInstanceNorm(out_channel, style_dim)
         self.lrelu1 = nn.LeakyReLU(0.2)
 
         self.conv2 = EqualConv2d(out_channel, out_channel, kernel_size, padding=padding)
-        self.adain2 = AdaptiveInstanceNorm(out_channel, style_dim)
         self.noise2 = equal_lr(NoiseInjection(out_channel))
+        self.adain2 = AdaptiveInstanceNorm(out_channel, style_dim)
         self.lrelu2 = nn.LeakyReLU(0.2)
 
     def forward(self, input, style, noise):
         out = self.conv1(input)
-        out = self.adain1(out, style)
         out = self.noise1(out, noise)
+        out = self.adain1(out, style)
         out = self.lrelu1(out)
 
         out = self.conv2(out)
-        out = self.adain2(out, style)
         out = self.noise2(out, noise)
+        out = self.adain2(out, style)
         out = self.lrelu2(out)
 
         return out
