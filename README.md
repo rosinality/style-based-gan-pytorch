@@ -4,7 +4,9 @@ Implementation of A Style-Based Generator Architecture for Generative Adversaria
 
 Usage:
 
-> python train.py -d {celeba} PATH
+> python train.py --mixing -d {folder} PATH
+
+> python train.py --mixing --loss r1 -d {folder}
 
 ## Sample
 
