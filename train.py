@@ -81,13 +81,14 @@ def train(args, dataset, generator, discriminator):
         alpha = min(1, 1 / args.phase * (used_sample + 1))
 
         if used_sample > args.phase * 2:
-            alpha = 0
-            used_sample = 0
             step += 1
 
             if step > int(math.log2(args.max_size)) - 2:
-                alpha = 1
                 step = int(math.log2(args.max_size)) - 2
+
+            else:
+                alpha = 0
+                used_sample = 0
 
             resolution = 4 * 2 ** step
 
@@ -238,7 +239,7 @@ def train(args, dataset, generator, discriminator):
             )
 
         state_msg = (
-            f'{i + 1}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
+            f'Size: {4 * 2 ** step}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
             f' Grad: {grad_loss_val:.3f}; Alpha: {alpha:.5f}'
         )
 
