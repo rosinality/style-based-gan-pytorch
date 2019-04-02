@@ -58,9 +58,7 @@ class PixelNorm(nn.Module):
         super().__init__()
 
     def forward(self, input):
-        return input / torch.sqrt(torch.mean(input ** 2, dim=1, keepdim=True)
-                                  + 1e-8)
-
+        return input / torch.sqrt(torch.mean(input ** 2, dim=1, keepdim=True) + 1e-8)
 
 
 class Blur(nn.Module):
@@ -73,7 +71,12 @@ class Blur(nn.Module):
         self.register_buffer('weight', weight)
 
     def forward(self, input):
-        return F.conv2d(input, self.weight.repeat(input.shape[1], 1, 1, 1), padding=1, groups=input.shape[1])
+        return F.conv2d(
+            input,
+            self.weight.repeat(input.shape[1], 1, 1, 1),
+            padding=1,
+            groups=input.shape[1],
+        )
 
 
 class EqualConv2d(nn.Module):
@@ -104,10 +107,17 @@ class EqualLinear(nn.Module):
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_channel, out_channel, kernel_size,
-                 padding,
-                 kernel_size2=None, padding2=None,
-                 pixel_norm=True, spectral_norm=False):
+    def __init__(
+        self,
+        in_channel,
+        out_channel,
+        kernel_size,
+        padding,
+        kernel_size2=None,
+        padding2=None,
+        pixel_norm=True,
+        spectral_norm=False,
+    ):
         super().__init__()
 
         pad1 = padding
@@ -120,12 +130,12 @@ class ConvBlock(nn.Module):
         if kernel_size2 is not None:
             kernel2 = kernel_size2
 
-        self.conv = nn.Sequential(EqualConv2d(in_channel, out_channel,
-                                            kernel1, padding=pad1),
-                                nn.LeakyReLU(0.2),
-                                EqualConv2d(out_channel, out_channel,
-                                            kernel2, padding=pad2),
-                                nn.LeakyReLU(0.2))
+        self.conv = nn.Sequential(
+            EqualConv2d(in_channel, out_channel, kernel1, padding=pad1),
+            nn.LeakyReLU(0.2),
+            EqualConv2d(out_channel, out_channel, kernel2, padding=pad2),
+            nn.LeakyReLU(0.2),
+        )
 
     def forward(self, input):
         out = self.conv(input)
@@ -177,15 +187,24 @@ class ConstantInput(nn.Module):
 
 
 class StyledConvBlock(nn.Module):
-    def __init__(self, in_channel, out_channel, kernel_size=3,
-                 padding=1, style_dim=512, initial=False):
+    def __init__(
+        self,
+        in_channel,
+        out_channel,
+        kernel_size=3,
+        padding=1,
+        style_dim=512,
+        initial=False,
+    ):
         super().__init__()
 
         if initial:
             self.conv1 = ConstantInput(in_channel)
 
         else:
-            self.conv1 = EqualConv2d(in_channel, out_channel, kernel_size, padding=padding)
+            self.conv1 = EqualConv2d(
+                in_channel, out_channel, kernel_size, padding=padding
+            )
 
         self.noise1 = equal_lr(NoiseInjection(out_channel))
         self.adain1 = AdaptiveInstanceNorm(out_channel, style_dim)
@@ -214,19 +233,33 @@ class Generator(nn.Module):
     def __init__(self, code_dim):
         super().__init__()
 
-        self.progression = nn.ModuleList([StyledConvBlock(512, 512, 3, 1, initial=True),
-                                          StyledConvBlock(512, 512, 3, 1),
-                                          StyledConvBlock(512, 512, 3, 1),
-                                          StyledConvBlock(512, 512, 3, 1),
-                                          StyledConvBlock(512, 256, 3, 1),
-                                          StyledConvBlock(256, 128, 3, 1)])
+        self.progression = nn.ModuleList(
+            [
+                StyledConvBlock(512, 512, 3, 1, initial=True),
+                StyledConvBlock(512, 512, 3, 1),
+                StyledConvBlock(512, 512, 3, 1),
+                StyledConvBlock(512, 512, 3, 1),
+                StyledConvBlock(512, 256, 3, 1),
+                StyledConvBlock(256, 128, 3, 1),
+                StyledConvBlock(128, 64, 3, 1),
+                StyledConvBlock(64, 32, 3, 1),
+                StyledConvBlock(32, 16, 3, 1),
+            ]
+        )
 
-        self.to_rgb = nn.ModuleList([EqualConv2d(512, 3, 1),
-                                     EqualConv2d(512, 3, 1),
-                                     EqualConv2d(512, 3, 1),
-                                     EqualConv2d(512, 3, 1),
-                                     EqualConv2d(256, 3, 1),
-                                     EqualConv2d(128, 3, 1)])
+        self.to_rgb = nn.ModuleList(
+            [
+                EqualConv2d(512, 3, 1),
+                EqualConv2d(512, 3, 1),
+                EqualConv2d(512, 3, 1),
+                EqualConv2d(512, 3, 1),
+                EqualConv2d(256, 3, 1),
+                EqualConv2d(128, 3, 1),
+                EqualConv2d(64, 3, 1),
+                EqualConv2d(32, 3, 1),
+                EqualConv2d(16, 3, 1),
+            ]
+        )
 
         # self.blur = Blur()
 
@@ -256,7 +289,9 @@ class Generator(nn.Module):
                     style_step = style[0]
 
             if i > 0 and step > 0:
-                upsample = F.interpolate(out, scale_factor=2, mode='bilinear', align_corners=False)
+                upsample = F.interpolate(
+                    out, scale_factor=2, mode='bilinear', align_corners=False
+                )
                 # upsample = self.blur(upsample)
                 out = conv(upsample, style_step, noise[i])
 
@@ -288,7 +323,16 @@ class StyledGenerator(nn.Module):
 
         self.style = nn.Sequential(*layers)
 
-    def forward(self, input, noise=None, step=0, alpha=-1, mean_style=None, style_weight=0, mixing_range=(-1, -1)):
+    def forward(
+        self,
+        input,
+        noise=None,
+        step=0,
+        alpha=-1,
+        mean_style=None,
+        style_weight=0,
+        mixing_range=(-1, -1),
+    ):
         styles = []
         if type(input) not in (list, tuple):
             input = [input]
@@ -325,19 +369,33 @@ class Discriminator(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.progression = nn.ModuleList([ConvBlock(128, 256, 3, 1),
-                                          ConvBlock(256, 512, 3, 1),
-                                          ConvBlock(512, 512, 3, 1),
-                                          ConvBlock(512, 512, 3, 1),
-                                          ConvBlock(512, 512, 3, 1),
-                                          ConvBlock(513, 512, 3, 1, 4, 0)])
+        self.progression = nn.ModuleList(
+            [
+                ConvBlock(16, 32, 3, 1),
+                ConvBlock(32, 64, 3, 1),
+                ConvBlock(64, 128, 3, 1),
+                ConvBlock(128, 256, 3, 1),
+                ConvBlock(256, 512, 3, 1),
+                ConvBlock(512, 512, 3, 1),
+                ConvBlock(512, 512, 3, 1),
+                ConvBlock(512, 512, 3, 1),
+                ConvBlock(513, 512, 3, 1, 4, 0),
+            ]
+        )
 
-        self.from_rgb = nn.ModuleList([EqualConv2d(3, 128, 1),
-                                       EqualConv2d(3, 256, 1),
-                                       EqualConv2d(3, 512, 1),
-                                       EqualConv2d(3, 512, 1),
-                                       EqualConv2d(3, 512, 1),
-                                       EqualConv2d(3, 512, 1)])
+        self.from_rgb = nn.ModuleList(
+            [
+                EqualConv2d(3, 16, 1),
+                EqualConv2d(3, 32, 1),
+                EqualConv2d(3, 64, 1),
+                EqualConv2d(3, 128, 1),
+                EqualConv2d(3, 256, 1),
+                EqualConv2d(3, 512, 1),
+                EqualConv2d(3, 512, 1),
+                EqualConv2d(3, 512, 1),
+                EqualConv2d(3, 512, 1),
+            ]
+        )
 
         # self.blur = Blur()
 
@@ -362,12 +420,17 @@ class Discriminator(nn.Module):
 
             if i > 0:
                 # out = F.avg_pool2d(out, 2)
-                out = F.interpolate(out, scale_factor=0.5, mode='bilinear', align_corners=False)
+                out = F.interpolate(
+                    out, scale_factor=0.5, mode='bilinear', align_corners=False
+                )
 
                 if i == step and 0 <= alpha < 1:
                     # skip_rgb = F.avg_pool2d(input, 2)
-                    skip_rgb = F.interpolate(input, scale_factor=0.5, mode='bilinear', align_corners=False)
-                    skip_rgb = self.from_rgb[index + 1](skip_rgb)
+                    skip_rgb = self.from_rgb[index + 1](input)
+                    skip_rgb = F.interpolate(
+                        skip_rgb, scale_factor=0.5, mode='bilinear', align_corners=False
+                    )
+
                     out = (1 - alpha) * skip_rgb + alpha * out
 
         out = out.squeeze(2).squeeze(2)
