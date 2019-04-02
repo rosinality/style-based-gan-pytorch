@@ -55,7 +55,9 @@ def adjust_lr(optimizer, lr):
 def train(args, dataset, generator, discriminator):
     step = int(math.log2(args.init_size)) - 2
     resolution = 4 * 2 ** step
-    loader = sample_data(dataset, args.batch.get(resolution, 4), resolution)
+    loader = sample_data(
+        dataset, args.batch.get(resolution, args.batch_default), resolution
+    )
     data_loader = iter(loader)
 
     adjust_lr(g_optimizer, args.lr.get(resolution, 0.001))
@@ -89,7 +91,9 @@ def train(args, dataset, generator, discriminator):
 
             resolution = 4 * 2 ** step
 
-            loader = sample_data(dataset, args.batch.get(resolution, 4), resolution)
+            loader = sample_data(
+                dataset, args.batch.get(resolution, args.batch_default), resolution
+            )
             data_loader = iter(loader)
 
             adjust_lr(g_optimizer, args.lr.get(resolution, 0.001))
@@ -247,6 +251,7 @@ if __name__ == '__main__':
         help='number of samples used for each training phases',
     )
     parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
+    parser.add_argument('--sched', action='store_true', help='use lr scheduling')
     parser.add_argument('--init_size', default=8, type=int, help='initial image size')
     parser.add_argument('--max_size', default=1024, type=int, help='max image size')
     parser.add_argument(
@@ -295,9 +300,16 @@ if __name__ == '__main__':
         dataset = datasets.ImageFolder(args.path)
 
     elif args.data == 'lsun':
-        dataset = datasets.LSUNClass(path, target_transform=lambda x: 0)
+        dataset = datasets.LSUNClass(args.path, target_transform=lambda x: 0)
 
-    args.lr = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
-    args.batch = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16, 256: 8}
+    if args.sched:
+        args.lr = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
+        args.batch = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16}
+
+    else:
+        args.lr = {}
+        args.batch = {}
+
+    args.batch_default = 16
 
     train(args, dataset, generator, discriminator)

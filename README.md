@@ -6,7 +6,7 @@ Usage:
 
 > python train.py --mixing -d {folder} PATH
 
-> python train.py --mixing --loss r1 -d {folder}
+> python train.py --mixing --loss r1 --sched -d {folder}
 
 ## Sample
 
