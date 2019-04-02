@@ -85,9 +85,9 @@ def train(args, dataset, generator, discriminator):
             used_sample = 0
             step += 1
 
-            if step > math.log2(args.max_size) - 2:
+            if step > int(math.log2(args.max_size)) - 2:
                 alpha = 1
-                step = math.log2(args.max_size) - 2
+                step = int(math.log2(args.max_size)) - 2
 
             resolution = 4 * 2 ** step
 
@@ -95,6 +95,16 @@ def train(args, dataset, generator, discriminator):
                 dataset, args.batch.get(resolution, args.batch_default), resolution
             )
             data_loader = iter(loader)
+
+            torch.save(
+                {
+                    'generator': generator.module.state_dict(),
+                    'discriminator': discriminator.module.state_dict(),
+                    'g_optimizer': g_optimizer.state_dict(),
+                    'd_optimizer': d_optimizer.state_dict(),
+                },
+                f'checkpoint/train_step-{step}.model',
+            )
 
             adjust_lr(g_optimizer, args.lr.get(resolution, 0.001))
             adjust_lr(d_optimizer, args.lr.get(resolution, 0.001))
@@ -204,18 +214,20 @@ def train(args, dataset, generator, discriminator):
         if (i + 1) % 100 == 0:
             images = []
 
+            gen_i, gen_j = args.gen_sample.get(resolution, (10, 5))
+
             with torch.no_grad():
-                for _ in range(10):
+                for _ in range(gen_i):
                     images.append(
                         g_running(
-                            torch.randn(5, code_size).cuda(), step=step, alpha=alpha
+                            torch.randn(gen_j, code_size).cuda(), step=step, alpha=alpha
                         ).data.cpu()
                     )
 
             utils.save_image(
                 torch.cat(images, 0),
                 f'sample/{str(i + 1).zfill(6)}.png',
-                nrow=10,
+                nrow=gen_i,
                 normalize=True,
                 range=(-1, 1),
             )
@@ -227,7 +239,7 @@ def train(args, dataset, generator, discriminator):
 
         state_msg = (
             f'{i + 1}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
-            f' Grad: {grad_loss_val:.3f}; Alpha: {alpha:.7f}'
+            f' Grad: {grad_loss_val:.3f}; Alpha: {alpha:.5f}'
         )
 
         pbar.set_description(state_msg)
@@ -304,11 +316,13 @@ if __name__ == '__main__':
 
     if args.sched:
         args.lr = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
-        args.batch = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16}
+        args.batch = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 32, 256: 32}
 
     else:
         args.lr = {}
         args.batch = {}
+
+    args.gen_sample = {512: (8, 4), 1024: (4, 2)}
 
     args.batch_default = 16
 
