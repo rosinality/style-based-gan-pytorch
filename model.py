@@ -62,18 +62,18 @@ class PixelNorm(nn.Module):
 
 
 class Blur(nn.Module):
-    def __init__(self):
+    def __init__(self, channel):
         super().__init__()
 
         weight = torch.tensor([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=torch.float32)
         weight = weight.view(1, 1, 3, 3)
         weight = weight / weight.sum()
-        self.register_buffer('weight', weight)
+        self.register_buffer('weight', weight.repeat(channel, 1, 1, 1))
 
     def forward(self, input):
         return F.conv2d(
             input,
-            self.weight.repeat(input.shape[1], 1, 1, 1),
+            self.weight,
             padding=1,
             groups=input.shape[1],
         )
@@ -218,13 +218,13 @@ class StyledConvBlock(nn.Module):
     def forward(self, input, style, noise):
         out = self.conv1(input)
         out = self.noise1(out, noise)
-        out = self.adain1(out, style)
         out = self.lrelu1(out)
+        out = self.adain1(out, style)
 
         out = self.conv2(out)
         out = self.noise2(out, noise)
-        out = self.adain2(out, style)
         out = self.lrelu2(out)
+        out = self.adain2(out, style)
 
         return out
 
@@ -289,6 +289,8 @@ class Generator(nn.Module):
                     style_step = style[0]
 
             if i > 0 and step > 0:
+                out_prev = out
+
                 upsample = F.interpolate(
                     out, scale_factor=2, mode='bilinear', align_corners=False
                 )
@@ -302,7 +304,8 @@ class Generator(nn.Module):
                 out = to_rgb(out)
 
                 if i > 0 and 0 <= alpha < 1:
-                    skip_rgb = self.to_rgb[i - 1](upsample)
+                    skip_rgb = self.to_rgb[i - 1](out_prev)
+                    skip_rgb = F.interpolate(skip_rgb, scale_factor=2, mode='bilinear', align_corners=False)
                     out = (1 - alpha) * skip_rgb + alpha * out
 
                 break
