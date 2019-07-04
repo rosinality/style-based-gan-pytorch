@@ -1,5 +1,10 @@
 # Style-Based GAN in PyTorch
 
+##### Update (2019/07/04)
+
+* Now trainer uses pre-resized lmdb dataset for more stable data loading and training.
+* Model architecture is now more closely matches with official implementation.
+
 Implementation of A Style-Based Generator Architecture for Generative Adversarial Networks (https://arxiv.org/abs/1812.04948) in PyTorch
 
 Usage:
