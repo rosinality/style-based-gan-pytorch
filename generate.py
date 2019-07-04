@@ -4,7 +4,7 @@ from torchvision import utils
 from model import StyledGenerator
 
 generator = StyledGenerator(512).cuda()
-generator.load_state_dict(torch.load('checkpoint/130000.model'))
+generator.load_state_dict(torch.load('checkpoint/140000.model'))
 
 mean_style = None
 
