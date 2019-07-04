@@ -13,6 +13,7 @@ from torch.autograd import Variable, grad
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, utils
 
+from dataset import MultiResolutionDataset
 from model import StyledGenerator, Discriminator
 
 
@@ -30,17 +31,7 @@ def accumulate(model1, model2, decay=0.999):
 
 
 def sample_data(dataset, batch_size, image_size=4):
-    transform = transforms.Compose(
-        [
-            transforms.Resize(image_size),
-            transforms.CenterCrop(image_size),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]
-    )
-
-    dataset.transform = transform
+    dataset.resolution = image_size
     loader = DataLoader(dataset, shuffle=True, batch_size=batch_size, num_workers=16)
 
     return loader
@@ -80,6 +71,9 @@ def train(args, dataset, generator, discriminator):
 
         alpha = min(1, 1 / args.phase * (used_sample + 1))
 
+        if resolution == args.init_size:
+            alpha = 1
+
         if used_sample > args.phase * 2:
             step += 1
 
@@ -111,17 +105,16 @@ def train(args, dataset, generator, discriminator):
             adjust_lr(d_optimizer, args.lr.get(resolution, 0.001))
 
         try:
-            real_image, label = next(data_loader)
+            real_image = next(data_loader)
 
         except (OSError, StopIteration):
             data_loader = iter(loader)
-            real_image, label = next(data_loader)
+            real_image = next(data_loader)
 
         used_sample += real_image.shape[0]
 
         b_size = real_image.size(0)
         real_image = real_image.cuda()
-        label = label.cuda()
 
         if args.loss == 'wgan-gp':
             real_predict = discriminator(real_image, step=step, alpha=alpha)
@@ -255,9 +248,6 @@ if __name__ == '__main__':
 
     parser.add_argument('path', type=str, help='path of specified dataset')
     parser.add_argument(
-        '--n_gpu', type=int, default=4, help='number of gpu used for training'
-    )
-    parser.add_argument(
         '--phase',
         type=int,
         default=600_000,
@@ -276,14 +266,6 @@ if __name__ == '__main__':
         default='wgan-gp',
         choices=['wgan-gp', 'r1'],
         help='class of gan loss',
-    )
-    parser.add_argument(
-        '-d',
-        '--data',
-        default='folder',
-        type=str,
-        choices=['folder', 'lsun'],
-        help=('Specify dataset. ' 'Currently Image Folder and LSUN is supported'),
     )
 
     args = parser.parse_args()
@@ -309,11 +291,15 @@ if __name__ == '__main__':
 
     accumulate(g_running, generator.module, 0)
 
-    if args.data == 'folder':
-        dataset = datasets.ImageFolder(args.path)
+    transform = transforms.Compose(
+        [
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+    )
 
-    elif args.data == 'lsun':
-        dataset = datasets.LSUNClass(args.path, target_transform=lambda x: 0)
+    dataset = MultiResolutionDataset(args.path, transform)
 
     if args.sched:
         args.lr = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
