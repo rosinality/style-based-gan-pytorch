@@ -65,24 +65,28 @@ def train(args, dataset, generator, discriminator):
 
     alpha = 0
     used_sample = 0
+    
+    max_step = int(math.log2(args.max_size)) - 2
+    final_progress = False
 
     for i in pbar:
         discriminator.zero_grad()
 
         alpha = min(1, 1 / args.phase * (used_sample + 1))
 
-        if resolution == args.init_size:
+        if resolution == args.init_size or final_progress:
             alpha = 1
 
         if used_sample > args.phase * 2:
+            used_sample = 0
             step += 1
 
-            if step > int(math.log2(args.max_size)) - 2:
-                step = int(math.log2(args.max_size)) - 2
+            if step > max_step:
+                step = max_step
+                final_progress = True
 
             else:
                 alpha = 0
-                used_sample = 0
 
             resolution = 4 * 2 ** step
 
@@ -97,6 +101,7 @@ def train(args, dataset, generator, discriminator):
                     'discriminator': discriminator.module.state_dict(),
                     'g_optimizer': g_optimizer.state_dict(),
                     'd_optimizer': d_optimizer.state_dict(),
+                    'g_running': g_running.state_dict()
                 },
                 f'checkpoint/train_step-{step}.model',
             )
