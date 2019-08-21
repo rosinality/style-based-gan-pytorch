@@ -128,12 +128,12 @@ def train(args, dataset, generator, discriminator):
 
         elif args.loss == 'r1':
             real_image.requires_grad = True
-            real_predict = discriminator(real_image, step=step, alpha=alpha)
-            real_predict = F.softplus(-real_predict).mean()
+            real_scores = discriminator(real_image, step=step, alpha=alpha)
+            real_predict = F.softplus(-real_scores).mean()
             real_predict.backward(retain_graph=True)
 
             grad_real = grad(
-                outputs=real_predict.sum(), inputs=real_image, create_graph=True
+                outputs=real_scores.sum(), inputs=real_image, create_graph=True
             )[0]
             grad_penalty = (
                 grad_real.view(grad_real.size(0), -1).norm(2, dim=1) ** 2
