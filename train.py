@@ -65,7 +65,7 @@ def train(args, dataset, generator, discriminator):
 
     alpha = 0
     used_sample = 0
-    
+
     max_step = int(math.log2(args.max_size)) - 2
     final_progress = False
 
@@ -101,7 +101,7 @@ def train(args, dataset, generator, discriminator):
                     'discriminator': discriminator.module.state_dict(),
                     'g_optimizer': g_optimizer.state_dict(),
                     'd_optimizer': d_optimizer.state_dict(),
-                    'g_running': g_running.state_dict()
+                    'g_running': g_running.state_dict(),
                 },
                 f'checkpoint/train_step-{step}.model',
             )
@@ -263,6 +263,11 @@ if __name__ == '__main__':
     parser.add_argument('--init_size', default=8, type=int, help='initial image size')
     parser.add_argument('--max_size', default=1024, type=int, help='max image size')
     parser.add_argument(
+        '--from_rgb_activate',
+        action='store_true',
+        help='use activate in from_rgb (original implementation)',
+    )
+    parser.add_argument(
         '--mixing', action='store_true', help='use mixing regularization'
     )
     parser.add_argument(
@@ -276,7 +281,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     generator = nn.DataParallel(StyledGenerator(code_size)).cuda()
-    discriminator = nn.DataParallel(Discriminator()).cuda()
+    discriminator = nn.DataParallel(Discriminator(from_rgb_activate=args.from_rgb_activate)).cuda()
     g_running = StyledGenerator(code_size).cuda()
     g_running.train(False)
 

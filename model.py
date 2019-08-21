@@ -507,7 +507,7 @@ class StyledGenerator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, fused=True):
+    def __init__(self, fused=True, from_rgb_activate=False):
         super().__init__()
 
         self.progression = nn.ModuleList(
@@ -524,17 +524,24 @@ class Discriminator(nn.Module):
             ]
         )
 
+        def make_from_rgb(out_channel):
+            if from_rgb_activate:
+                return nn.Sequential(EqualConv2d(3, out_channel, 1), nn.LeakyReLU(0.2))
+
+            else:
+                return EqualConv2d(3, out_channel, 1)
+
         self.from_rgb = nn.ModuleList(
             [
-                EqualConv2d(3, 16, 1),
-                EqualConv2d(3, 32, 1),
-                EqualConv2d(3, 64, 1),
-                EqualConv2d(3, 128, 1),
-                EqualConv2d(3, 256, 1),
-                EqualConv2d(3, 512, 1),
-                EqualConv2d(3, 512, 1),
-                EqualConv2d(3, 512, 1),
-                EqualConv2d(3, 512, 1),
+                make_from_rgb(16),
+                make_from_rgb(32),
+                make_from_rgb(64),
+                make_from_rgb(128),
+                make_from_rgb(256),
+                make_from_rgb(512),
+                make_from_rgb(512),
+                make_from_rgb(512),
+                make_from_rgb(512),
             ]
         )
 
