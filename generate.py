@@ -23,9 +23,9 @@ def get_mean_style(generator, device):
     mean_style /= 10
 
 @torch.no_grad()
-def sample(generator, step, mean_style, device):
+def sample(generator, step, mean_style, n_sample, device):
     image = generator(
-        torch.randn(15, 512).to(device),
+        torch.randn(n_sample, 512).to(device),
         step=step,
         alpha=1,
         mean_style=mean_style,
@@ -35,9 +35,9 @@ def sample(generator, step, mean_style, device):
     return image
 
 @torch.no_grad()
-def style_mixing(generator, step, mean_style, device):
-    source_code = torch.randn(5, 512).to(device)
-    target_code = torch.randn(3, 512).to(device)
+def style_mixing(generator, step, mean_style, n_source, n_target, device):
+    source_code = torch.randn(n_source, 512).to(device)
+    target_code = torch.randn(n_target, 512).to(device)
     
     shape = 4 * 2 ** step
     alpha = 1
@@ -53,9 +53,9 @@ def style_mixing(generator, step, mean_style, device):
 
     images.append(source_image)
 
-    for i in range(3):
+    for i in range(n_target):
         image = generator(
-            [target_code[i].unsqueeze(0).repeat(5, 1), source_code],
+            [target_code[i].unsqueeze(0).repeat(n_source, 1), source_code],
             step=step,
             alpha=alpha,
             mean_style=mean_style,
@@ -73,6 +73,8 @@ def style_mixing(generator, step, mean_style, device):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--size', type=int, default=1024, help='size of the image')
+    parser.add_argument('--n_row', type=int, default=3, help='number of rows of sample matrix')
+    parser.add_argument('--n_col', type=int, default=5, help='number of columns of sample matrix')
     parser.add_argument('path', type=str, help='path to checkpoint file')
     
     args = parser.parse_args()
@@ -87,11 +89,11 @@ if __name__ == '__main__':
 
     step = int(math.log(args.size, 2)) - 2
     
-    img = sample(generator, step, mean_style, device)
-    utils.save_image(img, 'sample.png', nrow=5, normalize=True, range=(-1, 1))
+    img = sample(generator, step, mean_style, args.n_row * args.n_col, device)
+    utils.save_image(img, 'sample.png', nrow=args.n_col, normalize=True, range=(-1, 1))
     
     for j in range(20):
-        img = style_mixing(generator, step, mean_style, device)
+        img = style_mixing(generator, step, mean_style, args.n_col, args.n_row, device)
         utils.save_image(
-            img, f'sample_mixing_{j}.png', nrow=6, normalize=True, range=(-1, 1)
+            img, f'sample_mixing_{j}.png', nrow=args.n_col + 1, normalize=True, range=(-1, 1)
         )
