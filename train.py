@@ -268,7 +268,7 @@ if __name__ == '__main__':
         '--ckpt', default=None, type=str, help='load from previous checkpoints'
     )
     parser.add_argument(
-        '--from_rgb_activate',
+        '--no_from_rgb_activate',
         action='store_true',
         help='use activate in from_rgb (original implementation)',
     )
@@ -287,7 +287,7 @@ if __name__ == '__main__':
 
     generator = nn.DataParallel(StyledGenerator(code_size)).cuda()
     discriminator = nn.DataParallel(
-        Discriminator(from_rgb_activate=args.from_rgb_activate)
+        Discriminator(from_rgb_activate=not args.no_from_rgb_activate)
     ).cuda()
     g_running = StyledGenerator(code_size).cuda()
     g_running.train(False)
