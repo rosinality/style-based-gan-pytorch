@@ -74,7 +74,7 @@ def train(args, dataset, generator, discriminator):
 
         alpha = min(1, 1 / args.phase * (used_sample + 1))
 
-        if resolution == args.init_size or final_progress:
+        if (resolution == args.init_size and args.ckpt is None) or final_progress:
             alpha = 1
 
         if used_sample > args.phase * 2:
@@ -84,9 +84,11 @@ def train(args, dataset, generator, discriminator):
             if step > max_step:
                 step = max_step
                 final_progress = True
+                ckpt_step = step + 1
 
             else:
                 alpha = 0
+                ckpt_step = step
 
             resolution = 4 * 2 ** step
 
@@ -103,7 +105,7 @@ def train(args, dataset, generator, discriminator):
                     'd_optimizer': d_optimizer.state_dict(),
                     'g_running': g_running.state_dict(),
                 },
-                f'checkpoint/train_step-{step}.model',
+                f'checkpoint/train_step-{ckpt_step}.model',
             )
 
             adjust_lr(g_optimizer, args.lr.get(resolution, 0.001))
@@ -263,6 +265,9 @@ if __name__ == '__main__':
     parser.add_argument('--init_size', default=8, type=int, help='initial image size')
     parser.add_argument('--max_size', default=1024, type=int, help='max image size')
     parser.add_argument(
+        '--ckpt', default=None, type=str, help='load from previous checkpoints'
+    )
+    parser.add_argument(
         '--from_rgb_activate',
         action='store_true',
         help='use activate in from_rgb (original implementation)',
@@ -281,7 +286,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     generator = nn.DataParallel(StyledGenerator(code_size)).cuda()
-    discriminator = nn.DataParallel(Discriminator(from_rgb_activate=args.from_rgb_activate)).cuda()
+    discriminator = nn.DataParallel(
+        Discriminator(from_rgb_activate=args.from_rgb_activate)
+    ).cuda()
     g_running = StyledGenerator(code_size).cuda()
     g_running.train(False)
 
@@ -300,6 +307,15 @@ if __name__ == '__main__':
     d_optimizer = optim.Adam(discriminator.parameters(), lr=args.lr, betas=(0.0, 0.99))
 
     accumulate(g_running, generator.module, 0)
+
+    if args.ckpt is not None:
+        ckpt = torch.load(args.ckpt)
+
+        generator.module.load_state_dict(ckpt['generator'])
+        discriminator.module.load_state_dict(ckpt['discriminator'])
+        g_running.load_state_dict(ckpt['g_running'])
+        g_optimizer.load_state_dict(ckpt['g_optimizer'])
+        d_optimizer.load_state_dict(ckpt['d_optimizer'])
 
     transform = transforms.Compose(
         [
