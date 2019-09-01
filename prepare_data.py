@@ -38,7 +38,7 @@ def resize_worker(img_file, sizes):
     return i, out
 
 
-def prepare(transaction, dataset, n_worker, sizes=(8, 16, 32, 64, 128, 256, 512, 1024)):
+def prepare(txn, dataset, n_worker, sizes=(8, 16, 32, 64, 128, 256, 512, 1024)):
     resize_fn = partial(resize_worker, sizes=sizes)
 
     files = sorted(dataset.imgs, key=lambda x: x[0])
