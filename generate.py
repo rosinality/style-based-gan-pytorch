@@ -21,6 +21,7 @@ def get_mean_style(generator, device):
             mean_style += style
 
     mean_style /= 10
+    return mean_style
 
 @torch.no_grad()
 def sample(generator, step, mean_style, n_sample, device):
