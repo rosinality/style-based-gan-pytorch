@@ -11,7 +11,7 @@ from torchvision.transforms import functional as trans_fn
 
 
 def resize_and_convert(img, size, quality=100):
-    img = trans_fn.resize(img, size)
+    img = trans_fn.resize(img, size, Image.LANCZOS)
     img = trans_fn.center_crop(img, size)
     buffer = BytesIO()
     img.save(buffer, format='jpeg', quality=quality)
