@@ -432,11 +432,8 @@ class Generator(nn.Module):
 
             if i > 0 and step > 0:
                 out_prev = out
-
-                out = conv(out, style_step, noise[i])
-
-            else:
-                out = conv(out, style_step, noise[i])
+                
+            out = conv(out, style_step, noise[i])
 
             if i == step:
                 out = to_rgb(out)
