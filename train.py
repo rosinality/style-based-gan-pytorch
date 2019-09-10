@@ -142,7 +142,8 @@ def train(args, dataset, generator, discriminator):
             ).mean()
             grad_penalty = 10 / 2 * grad_penalty
             grad_penalty.backward()
-            grad_loss_val = grad_penalty.item()
+            if i%10 == 0:
+                grad_loss_val = grad_penalty.item()
 
         if args.mixing and random.random() < 0.9:
             gen_in11, gen_in12, gen_in21, gen_in22 = torch.randn(
@@ -177,13 +178,15 @@ def train(args, dataset, generator, discriminator):
             ).mean()
             grad_penalty = 10 * grad_penalty
             grad_penalty.backward()
-            grad_loss_val = grad_penalty.item()
-            disc_loss_val = (real_predict - fake_predict).item()
+            if i%10 == 0:
+                grad_loss_val = grad_penalty.item()
+                disc_loss_val = (real_predict - fake_predict).item()
 
         elif args.loss == 'r1':
             fake_predict = F.softplus(fake_predict).mean()
             fake_predict.backward()
-            disc_loss_val = (real_predict + fake_predict).item()
+            if i%10 == 0:
+                disc_loss_val = (real_predict + fake_predict).item()
 
         d_optimizer.step()
 
@@ -203,7 +206,8 @@ def train(args, dataset, generator, discriminator):
             elif args.loss == 'r1':
                 loss = F.softplus(-predict).mean()
 
-            gen_loss_val = loss.item()
+            if i%10 == 0:
+                gen_loss_val = loss.item()
 
             loss.backward()
             g_optimizer.step()
