@@ -292,8 +292,6 @@ if __name__ == '__main__':
     g_running = StyledGenerator(code_size).cuda()
     g_running.train(False)
 
-    class_loss = nn.CrossEntropyLoss()
-
     g_optimizer = optim.Adam(
         generator.module.generator.parameters(), lr=args.lr, betas=(0.0, 0.99)
     )
