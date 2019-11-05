@@ -180,7 +180,7 @@ def train(args, dataset, generator, discriminator):
             grad_penalty.backward()
             if i%10 == 0:
                 grad_loss_val = grad_penalty.item()
-                disc_loss_val = (real_predict - fake_predict).item()
+                disc_loss_val = (-real_predict + fake_predict).item()
 
         elif args.loss == 'r1':
             fake_predict = F.softplus(fake_predict).mean()
