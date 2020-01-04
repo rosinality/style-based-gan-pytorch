@@ -32,7 +32,7 @@ def accumulate(model1, model2, decay=0.999):
 
 def sample_data(dataset, batch_size, image_size=4):
     dataset.resolution = image_size
-    loader = DataLoader(dataset, shuffle=True, batch_size=batch_size, num_workers=1)
+    loader = DataLoader(dataset, shuffle=True, batch_size=batch_size, num_workers=1, drop_last=True)
 
     return loader
 
