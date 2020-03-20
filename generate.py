@@ -80,10 +80,10 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    device = 'cpu'
+    device = 'cuda'
 
     generator = StyledGenerator(512).to(device)
-    generator.load_state_dict(torch.load(args.path, map_location=torch.device('cpu'))['g_running'])
+    generator.load_state_dict(torch.load(args.path)['g_running'])
     generator.eval()
 
     mean_style = get_mean_style(generator, device)
