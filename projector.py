@@ -1,7 +1,6 @@
 import argparse
 import math
 import os
-import numpy as np
 import torch
 from torch import optim
 from torch.nn import functional as F
@@ -11,22 +10,6 @@ from tqdm import tqdm
 
 import lpips
 from model import StyledGenerator
-
-@torch.no_grad()
-def get_mean_style(generator, device):
-    mean_style = None
-
-    for i in range(10):
-        style = generator.mean_style(torch.randn(1024, 512).to(device))
-
-        if mean_style is None:
-            mean_style = style
-
-        else:
-            mean_style += style
-
-    mean_style /= 10
-    return mean_style
 
 def noise_regularize(noises):
     loss = 0
@@ -87,13 +70,12 @@ def make_image(tensor):
     )
 
 def make_noise(device,size):
-        noises = []
-        batch = 1
-        step = int(math.log(args.size, 2)) - 2
-        for i in range(step + 1):
-                size = 4 * 2 ** i
-                noises.append(torch.randn(batch, 1, size, size, device=device))
-        return noises
+    noises = []
+    step = int(math.log(size, 2)) - 2
+    for i in range(step + 1):
+            size = 4 * 2 ** i
+            noises.append(torch.randn(1, 1, size, size, device=device))
+    return noises
 
 if __name__ == "__main__":
     device = "cuda"
@@ -172,7 +154,6 @@ if __name__ == "__main__":
     g_ema.load_state_dict(torch.load(args.ckpt)["g_running"], strict=False)
     g_ema.eval()
     g_ema = g_ema.to(device)
-    mean_style = get_mean_style(g_ema, device)
     step = int(math.log(args.size, 2)) - 2
     with torch.no_grad():
         noise_sample = torch.randn(n_mean_latent, 512, device=device)
