@@ -11,6 +11,8 @@ I found bugs in the implementation thanks to @adambielski and @TropComplique! (h
 
 Implementation of A Style-Based Generator Architecture for Generative Adversarial Networks (https://arxiv.org/abs/1812.04948) in PyTorch
 
+* [Demo and Docker image on Replicate](https://replicate.ai/rosinality/style-based-gan-pytorch)
+
 Usage:
 
 You should prepare lmdb dataset
