@@ -1,0 +1,9 @@
+predict: predict.py:Predictor
+build:
+  python_version: 3.8
+  python_packages:
+    - torch==1.7.0
+    - torchvision==0.8.1
+    - tqdm==4.59.0
+    - pillow==8.1.2
+    - lmdb==1.1.1
